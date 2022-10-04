@@ -20,12 +20,12 @@ export default function App() {
   const handleChange = event => setUser(event.target.value);
   const handleSubmit = event => {
     event.preventDefault();
-    //alert(`Username: ${user}`);
+    alert(`Username: ${user}`);
   };
 
   const [online, setOnline] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]);
+  const [inbox, setInbox] = useState({});
   const [receiver, setReceiver] = useState('');
   const [send, setSend] = useState(false);
   const handleMessage = event => setMessage(event.target.value);
@@ -39,49 +39,47 @@ export default function App() {
   useEffect(() => {
     if (send) {
       console.log(`${user} => ${receiver} : ${message}`);
-      axios.post("http://localhost:27017/nariel", {
-        sender: user,
-        receiver: receiver,
-        message: message,
+      axios.patch("http://localhost:27017/nariel", {
+        from: user,
+        to: receiver,
+        body: message,
       });
-      
       setMessage("");
       setSend(false);
     }
   }, [send]);
 
   function Inbox() {
-    axios
-      .get("http://localhost:27017/nariel", {
-        receiver: receiver,
-      })
-      .then((res) => {
-        setMessages(res.data);
-        console.log(messages)
-      });
-      messages.forEach(function(item, index) {
-          <Receiver 
-            user={item.receiver}
-            message={item.message}/>
-      })
-  }
 
-  useEffect(() => {
-    if (online) {
-      localStorage.setItem("name", JSON.stringify(user));
-      setInterval(Inbox, 1000);
-      Inbox();
-    } else {
-      localStorage.removeItem("name");
+    var requestOptions = {
+      method: 'GET',
+      redirect: 'follow'
+    };
+
+    fetch("http://localhost:27017/nariel", requestOptions)
+      .then(response => response.json())
+      .then(result => {result.forEach(function(doc) {
+                        if(doc.user == user) {
+                            console.log(doc)
+                            setInbox(doc)
+                        }
+                    })})
+      .catch(error => console.log('error', error));
     }
-  }, [online]);
 
+    useEffect(() => {
+      if (online) {
+        setInterval(Inbox, 1000);
+        Inbox();
+      }
+    }, [online]);
   
 
   return (
-      <Box m='-10'>
-      <Box w='100vw' bg='#00c04b' >
-        <Text fontSize='40px' fontWeight='bold' fontFamily='sans-serif' m='0px' pl='10px'>
+    <ChakraProvider>
+      <Box>
+      <Box  bg='#00c04b' >
+        <Text fontSize='40px' fontWeight='bold' fontFamily='sans-serif' pl='10px'>
           NARIEL
         </Text>
       </Box>
@@ -94,6 +92,7 @@ export default function App() {
             <form onSubmit={handleSubmit}>
               <Input
                 placeholder='username'
+                _placeholder={{ color: 'white' }}
                 w='300px'
                 h='30px'
                 onChange={handleChange}
@@ -115,7 +114,7 @@ export default function App() {
         <Box>
         <Box bg='#e6e6fa'  display='flex' justifyContent='space-between'>
         <Box w='100vw' display='flex'>
-            <Text m='0px' fontSize='15px' fontWeight='bold' fontFamily='sans-serif' pl='10px' py='5px'>
+            <Text fontSize='15px' fontWeight='bold' fontFamily='sans-serif' pl='10px' py='5px'>
               {user}
             </Text>
             <Text bg='black' borderRadius='5px' my='2px' ml='5px' fontSize='13px' fontWeight='bold' fontFamily='sans-serif' px='5px' py='5px' color='#39ff14'>
@@ -125,6 +124,7 @@ export default function App() {
         <Button
             type='submit'
             mx='5px'
+            mt='2px'
             h='30px'
             bg='black'
             color='#39ff14'
@@ -133,9 +133,9 @@ export default function App() {
             Log Out
         </Button>
         </Box>
-        <Box display='flex' borderWidth='100px' borderColor='#00c04b' w='100vw' h='90vh'>
-          <Inbox />
-        <Box position='absolute' bottom='0' w='100vw' bg='#e6e6fa' display='flex' justifyContent='space-around' p='5px'>
+        <Box display='flex' borderWidth='10px' borderColor='#00c04b'  h='90vh'>
+          
+        <Box position='absolute' px='5vw' pt='2px' left='0' bottom='0' bg='#e6e6fa' display='flex'  >
         <form onSubmit={handleSend}>
               <Input
                 placeholder='To'
@@ -151,7 +151,7 @@ export default function App() {
               />
               <Button
                 type='submit'
-                mx='5px'
+                m='2px'
                 h='30px'
                 bg='teal'
                 onClick={() => setSend(true)}
@@ -164,9 +164,8 @@ export default function App() {
         </Box>
       )}
     </Box>
+    </ChakraProvider>
   );
-
-  
 
   const Sender = props => {
     return (
